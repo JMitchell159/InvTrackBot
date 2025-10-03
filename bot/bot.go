@@ -32,29 +32,22 @@ func Start() {
 
 	BotId = u.ID
 
-	goBot.AddHandler(messageHandler)
+	goBot.AddHandler(providePrefix(cfg, messageHandler))
 
 	err = goBot.Open()
 	if err != nil {
-		fmt.Println("Failed opening connectionto Discord:", err)
+		fmt.Println("Failed opening connection to Discord:", err)
 		return
 	}
 
 	fmt.Println("Bot is now connected!")
 }
 
-func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate) {
+func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, prefix string) {
 	if e.Author.ID == BotId {
 		return
 	}
 
-	cfg, err := config.ReadConfig()
-	if err != nil {
-		fmt.Println("Failed reading configuration:", err)
-		return
-	}
-
-	prefix := cfg.BotPrefix
 	if strings.HasPrefix(e.Content, prefix) {
 		args := strings.Fields(e.Content)[strings.Index(e.Content, prefix):]
 		cmd := args[0][len(prefix):]
