@@ -56,15 +56,19 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, prefix str
 
 		switch cmd {
 		case "ping":
-			_, err := s.ChannelMessageSend(e.ChannelID, "Pong!")
-			if err != nil {
-				fmt.Println("Failed sending Pong response:", err)
-			}
+			pingPong(s, e)
 		default:
 			_, err := s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd))
 			if err != nil {
 				fmt.Println("Failed sending Unknown Command response:", err)
 			}
 		}
+	}
+}
+
+func pingPong(s *discordgo.Session, e *discordgo.MessageCreate) {
+	_, err := s.ChannelMessageSend(e.ChannelID, "Pong!")
+	if err != nil {
+		fmt.Println("Failed sending Pong response:", err)
 	}
 }
