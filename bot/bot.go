@@ -140,7 +140,7 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 			}
 			return
 		}
-		if []rune(cmdArgs[1])[0] == '@' {
+		if cmdArgs[1][0] == '@' {
 			_, err := s.ChannelMessageSend(e.ChannelID, "Name argument cannot start with an @.")
 			if err != nil {
 				fmt.Println("Failed sending name required response:", err)
