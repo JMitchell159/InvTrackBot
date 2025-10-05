@@ -140,8 +140,8 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 			}
 			return
 		}
-		if cmdArgs[1] == "@InventoryTracking" {
-			_, err := s.ChannelMessageSend(e.ChannelID, "Name argument cannot be the bot's name.")
+		if []rune(cmdArgs[1])[0] == '@' {
+			_, err := s.ChannelMessageSend(e.ChannelID, "Name argument cannot start with an @.")
 			if err != nil {
 				fmt.Println("Failed sending name required response:", err)
 			}
