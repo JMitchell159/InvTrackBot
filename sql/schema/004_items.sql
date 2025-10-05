@@ -1,10 +1,9 @@
 -- +goose Up
 CREATE TABLE items(
-    id UUID PRIMARY KEY,
+    name TEXT PRIMARY KEY,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    name TEXT NOT NULL,
-    description VARCHAR NOT NULL
+    description VARCHAR
 );
 
 -- +goose Down
