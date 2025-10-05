@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -51,6 +52,9 @@ func Start() {
 		fmt.Println("Failed getting current User:", err)
 		return
 	}
+
+	goBot.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent | discordgo.IntentsGuildMembers
+	goBot.StateEnabled = true
 
 	BotId = u.ID
 
@@ -147,7 +151,15 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 			}
 			return
 		}
-		_, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
+		_, err := st.db.GetServer(context.Background(), e.GuildID)
+		if errors.Is(err, sql.ErrNoRows) {
+			_, err := s.ChannelMessageSend(e.ChannelID, "You must register the server first. The syntax for that command is '!register server @[botName]'")
+			if err != nil {
+				fmt.Println("Failed sending server registration required response:", err)
+			}
+			return
+		}
+		_, err = st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
 			Name:     cmdArgs[1],
 			ServerID: e.GuildID,
 		})
