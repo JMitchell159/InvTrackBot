@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Token     string `json:"token"`
 	BotPrefix string `json:"botPrefix"`
+	DBUrl     string `json:"dbURL"`
 }
 
 func ReadConfig() (*Config, error) {
