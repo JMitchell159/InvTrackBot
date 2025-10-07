@@ -33,6 +33,7 @@ type Item struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Description sql.NullString
+	Category    sql.NullString
 }
 
 type Player struct {
