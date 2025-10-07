@@ -113,12 +113,12 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			sendMessage(s, e.ChannelID, "Failed to update inventory.", "Failed to send failed inventory update response:")
 			return
 		}
-		player_name, _ := st.db.GetPlayer(context.Background(), player_id)
+		player, _ := st.db.GetPlayer(context.Background(), player_id)
 		msg := ""
 		if quant == 1 {
-			msg = fmt.Sprintf("%s added 1 %s to their inventory.", player_name, cmdArgs[1])
+			msg = fmt.Sprintf("%s added 1 %s to their inventory.", player.Name, cmdArgs[1])
 		} else if quant > 1 {
-			msg = fmt.Sprintf("%s added %d %ss to their inventory.", player_name, quant, cmdArgs[1])
+			msg = fmt.Sprintf("%s added %d %ss to their inventory.", player.Name, quant, cmdArgs[1])
 		}
 		sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 		return
