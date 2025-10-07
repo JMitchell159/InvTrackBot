@@ -20,35 +20,23 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 	!addItem <player_id> <item_name> <quantity>
 	*/
 	if len(cmdArgs) < 3 {
-		_, err := s.ChannelMessageSend(e.ChannelID, "The addItem command needs to be supplied with either 3 or 4 arguments. Look in the help section for info on addItem usage.")
-		if err != nil {
-			fmt.Println("Failed sending required arguments response:", err)
-		}
+		sendMessage(s, e.ChannelID, "The addItem command needs to be supplied with either 3 or 4 arguments. Look in the help section for info on addItem usage.", "Failed sending required arguments response:")
 		return
 	}
 	if len(cmdArgs) == 3 {
 		player_id, err := uuid.Parse(cmdArgs[0])
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to parse uuid.")
-			if err != nil {
-				fmt.Println("Failed to send failed uuid parse response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to parse uuid.", "Failed to send failed uuid parse response:")
 			return
 		}
 		quant, err := strconv.Atoi(cmdArgs[2])
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to parse quantity argument.")
-			if err != nil {
-				fmt.Println("Failed sending failed quantity parse response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to parse quantity argument.", "Failed sending failed quantity parse response:")
 			return
 		}
 		_, err = st.db.GetItem(context.Background(), cmdArgs[1])
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to fetch item.")
-			if err != nil {
-				fmt.Println("Failed sending failed item fetch response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to fetch item.", "Failed sending failed item fetch response:")
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
@@ -58,10 +46,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				UpdatedAt: time.Now(),
 			})
 			if err != nil {
-				_, err = s.ChannelMessageSend(e.ChannelID, "Failed to create item.")
-				if err != nil {
-					fmt.Println("Failed sending failed item create response:", err)
-				}
+				sendMessage(s, e.ChannelID, "Failed to create item.", "Failed sending failed item create response:")
 				return
 			}
 			lineItem, err := st.db.AddLineItem(context.Background(), database.AddLineItemParams{
@@ -73,10 +58,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				ItemName:  cmdArgs[1],
 			})
 			if err != nil {
-				_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
-				if err != nil {
-					fmt.Println("Failed to send failed inventory add response:", err)
-				}
+				sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
 				return
 			}
 			msg := ""
@@ -86,18 +68,12 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			if lineItem.Quantity > 1 {
 				msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
 			}
-			_, err = s.ChannelMessageSend(e.ChannelID, msg)
-			if err != nil {
-				fmt.Println("Failed to send addItem response:", err)
-			}
+			sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 			return
 		}
 		_, err = st.db.GetPlayer(context.Background(), player_id)
 		if errors.Is(err, sql.ErrNoRows) {
-			_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Player_id %s does not exist.", player_id.String()))
-			if err != nil {
-				fmt.Println("Failed to send invalid player_id response:", err)
-			}
+			sendMessage(s, e.ChannelID, fmt.Sprintf("Player_id %s does not exist.", player_id.String()), "Failed to send invalid player_id response:")
 			return
 		}
 		_, err = st.db.GetLineItemByItemAndOwner(context.Background(), database.GetLineItemByItemAndOwnerParams{
@@ -114,10 +90,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				ItemName:  cmdArgs[1],
 			})
 			if err != nil {
-				_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
-				if err != nil {
-					fmt.Println("Failed to send failed inventory add response:", err)
-				}
+				sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
 				return
 			}
 			msg := ""
@@ -127,10 +100,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			if lineItem.Quantity > 1 {
 				msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
 			}
-			_, err = s.ChannelMessageSend(e.ChannelID, msg)
-			if err != nil {
-				fmt.Println("Failed to send addItem response:", err)
-			}
+			sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 			return
 		}
 		err = st.db.UpdateLineItem(context.Background(), database.UpdateLineItemParams{
@@ -140,10 +110,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			ItemName:  cmdArgs[1],
 		})
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to update inventory.")
-			if err != nil {
-				fmt.Println("Failed to send failed inventory update response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to update inventory.", "Failed to send failed inventory update response:")
 			return
 		}
 		player_name, _ := st.db.GetPlayer(context.Background(), player_id)
@@ -153,18 +120,12 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		} else if quant > 1 {
 			msg = fmt.Sprintf("%s added %d %ss to their inventory.", player_name, quant, cmdArgs[1])
 		}
-		_, err = s.ChannelMessageSend(e.ChannelID, msg)
-		if err != nil {
-			fmt.Println("Failed to send addItem response:", err)
-		}
+		sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 		return
 	}
 	quant, err := strconv.Atoi(cmdArgs[3])
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, "Failed to parse quantity.")
-		if err != nil {
-			fmt.Println("Failed to send failed quantity parse response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Failed to parse quantity.", "Failed to send failed quantity parse response:")
 		return
 	}
 	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
@@ -172,17 +133,11 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		ServerID: e.GuildID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Game %s does not exist in this server.", cmdArgs[0]))
-		if err != nil {
-			fmt.Println("Failed to send invalid game response:", err)
-		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Game %s does not exist in this server.", cmdArgs[0]), "Failed to send invalid game repsonse:")
 		return
 	}
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, "Something went wrong while fetching game.")
-		if err != nil {
-			fmt.Println("Failed to send failed game fetch response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Something went wrong while fetching game.", "Failed to send fialed game fetch response:")
 		return
 	}
 	player, err := st.db.GetPlayerByName(context.Background(), database.GetPlayerByNameParams{
@@ -190,17 +145,11 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		GameID: game.ID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("player %s does not exist in this game.", cmdArgs[1]))
-		if err != nil {
-			fmt.Println("Failed to send invalid player response:", err)
-		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("player %s does not exist in this game.", cmdArgs[1]), "Failed to send invalid player response:")
 		return
 	}
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, "Something went wrong while fetching player.")
-		if err != nil {
-			fmt.Println("Failed to send failed player fetch response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Something went wrong while fetching player.", "Failed to send failed player fetch response:")
 		return
 	}
 	_, err = st.db.GetItem(context.Background(), cmdArgs[2])
@@ -211,10 +160,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			UpdatedAt: time.Now(),
 		})
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to create item.")
-			if err != nil {
-				fmt.Println("Failed sending failed item create response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to create item.", "Failed sending failed item create response:")
 			return
 		}
 		lineItem, err := st.db.AddLineItem(context.Background(), database.AddLineItemParams{
@@ -226,10 +172,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			ItemName:  cmdArgs[2],
 		})
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
-			if err != nil {
-				fmt.Println("Failed to send failed inventory add response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
 			return
 		}
 		msg := ""
@@ -239,10 +182,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		if lineItem.Quantity > 1 {
 			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
 		}
-		_, err = s.ChannelMessageSend(e.ChannelID, msg)
-		if err != nil {
-			fmt.Println("Failed to send addItem response:", err)
-		}
+		sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 		return
 	}
 	_, err = st.db.GetLineItemByItemAndOwner(context.Background(), database.GetLineItemByItemAndOwnerParams{
@@ -259,10 +199,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			ItemName:  cmdArgs[2],
 		})
 		if err != nil {
-			_, err = s.ChannelMessageSend(e.ChannelID, "Something went wrong while adding inventory entry.")
-			if err != nil {
-				fmt.Println("Failed to send failed inventory addition response:", err)
-			}
+			sendMessage(s, e.ChannelID, "Something went wrong while adding inventory entry.", "Failed to send failed inventory addition response:")
 			return
 		}
 		msg := ""
@@ -272,10 +209,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		if lineItem.Quantity > 1 {
 			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
 		}
-		_, err = s.ChannelMessageSend(e.ChannelID, msg)
-		if err != nil {
-			fmt.Println("Failed to send addItem response:", err)
-		}
+		sendMessage(s, e.ChannelID, msg, "Failed to send addItem repsonse:")
 		return
 	}
 	err = st.db.UpdateLineItem(context.Background(), database.UpdateLineItemParams{
@@ -285,10 +219,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		ItemName:  cmdArgs[2],
 	})
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, "Failed to update inventory.")
-		if err != nil {
-			fmt.Println("Failed to send failed inventory update response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Failed to update inventory.", "Failed to send failed inventory update response:")
 		return
 	}
 	msg := ""
@@ -297,8 +228,5 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 	} else if quant > 1 {
 		msg = fmt.Sprintf("%s added %d %ss to their inventory.", cmdArgs[1], quant, cmdArgs[2])
 	}
-	_, err = s.ChannelMessageSend(e.ChannelID, msg)
-	if err != nil {
-		fmt.Println("Failed to send addItem response:", err)
-	}
+	sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 }
