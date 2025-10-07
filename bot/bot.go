@@ -80,10 +80,7 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			return
 		}
 		if len(args) < 2 {
-			_, err := s.ChannelMessageSend(e.ChannelID, "All commands must have at least 2 fields, the command name and at least one qualifier.")
-			if err != nil {
-				fmt.Println("Failed sending required arguments response:", err)
-			}
+			sendMessage(s, e.ChannelID, "All commands must have at least 2 fields, the command name and at least one qualifier.", "Failed sending required arguments response:")
 			return
 		}
 		arguments := args[1:]
@@ -96,10 +93,7 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 		case "addItem":
 			st.addItem(s, e, arguments)
 		default:
-			_, err := s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd))
-			if err != nil {
-				fmt.Println("Failed sending Unknown Command response:", err)
-			}
+			sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd), "Failed sending Unknown Command response:")
 		}
 	}
 }

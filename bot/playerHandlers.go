@@ -16,18 +16,8 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 	/* Syntax:
 	!addPlayer <game_name> <player_name>
 	*/
-	if cmdArgs == nil {
-		_, err := s.ChannelMessageSend(e.ChannelID, "The add command takes 2 arguments in this order, player name & game name")
-		if err != nil {
-			fmt.Println("Failed sending required add arguments response:", err)
-		}
-		return
-	}
-	if len(cmdArgs) == 1 {
-		_, err := s.ChannelMessageSend(e.ChannelID, "The add command takes 2 arguments in this order, player name & game name")
-		if err != nil {
-			fmt.Println("Failed sending required add arguments response:", err)
-		}
+	if len(cmdArgs) < 2 {
+		sendMessage(s, e.ChannelID, "The add command takes 2 arguments in this order, player name & game name.", "Failed sending required add arguments response:")
 		return
 	}
 	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
@@ -35,17 +25,11 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 		ServerID: e.GuildID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = s.ChannelMessageSend(e.ChannelID, "Specified game does not exist in this server.")
-		if err != nil {
-			fmt.Println("Failed sending invalid game response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Specified game does not exist in this server.", "Failed sending invalid game response:")
 		return
 	}
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Something went wrong when fetching game: %v", err))
-		if err != nil {
-			fmt.Println("Failed sending fetching error response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Something went wrong while fetching game.", "Failed sending fetching error response:")
 		return
 	}
 	_, err = st.db.GetPlayerByName(context.Background(), database.GetPlayerByNameParams{
@@ -53,10 +37,7 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 		GameID: game.ID,
 	})
 	if err == nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, "That player has already been added to this game.")
-		if err != nil {
-			fmt.Println("Failed sending duplicate player response:", err)
-		}
+		sendMessage(s, e.ChannelID, "That player has already been added to this game.", "Failed sending duplicate player response:")
 		return
 	}
 	player, err := st.db.CreatePlayer(context.Background(), database.CreatePlayerParams{
@@ -67,14 +48,8 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 		GameID:    game.ID,
 	})
 	if err != nil {
-		_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Something went wrong when trying to add player: %v", err))
-		if err != nil {
-			fmt.Println("Failed sending botched add player response:", err)
-		}
+		sendMessage(s, e.ChannelID, "Something went wrong while trying to add player.", "Failed sending failed player add response:")
 		return
 	}
-	_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Added player %s w/ ID: %s to game %s w/ ID: %s", player.Name, player.ID.String(), game.Name, game.ID.String()))
-	if err != nil {
-		fmt.Println("Failed sending add player response:", err)
-	}
+	sendMessage(s, e.ChannelID, fmt.Sprintf("Added player %s w/ ID: %s.", player.Name, player.ID.String()), "Failed sending add player response:")
 }
