@@ -45,3 +45,12 @@ func (q *Queries) GetServer(ctx context.Context, id string) (Server, error) {
 	err := row.Scan(&i.ID, &i.CreatedAt, &i.UpdatedAt)
 	return i, err
 }
+
+const resetServers = `-- name: ResetServers :exec
+DELETE FROM servers
+`
+
+func (q *Queries) ResetServers(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, resetServers)
+	return err
+}

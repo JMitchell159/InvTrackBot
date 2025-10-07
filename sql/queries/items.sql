@@ -21,3 +21,6 @@ WHERE name = $3;
 SELECT *
 FROM items
 WHERE name = $1;
+
+-- name: ResetItems :exec
+DELETE FROM items;

@@ -11,3 +11,6 @@ RETURNING *;
 SELECT *
 FROM servers
 WHERE id = $1;
+
+-- name: ResetServers :exec
+DELETE FROM servers;

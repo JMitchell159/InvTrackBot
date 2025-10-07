@@ -75,6 +75,10 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 	if strings.HasPrefix(e.Content, prefix) {
 		args := strings.Fields(e.Content)[strings.Index(e.Content, prefix):]
 		cmd := args[0][len(prefix):]
+		if cmd == "reset" {
+			st.reset(s, e)
+			return
+		}
 		if len(args) < 2 {
 			_, err := s.ChannelMessageSend(e.ChannelID, "All commands must have at least 2 fields, the command name and at least one qualifier.")
 			if err != nil {

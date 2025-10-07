@@ -59,6 +59,15 @@ func (q *Queries) GetItem(ctx context.Context, name string) (Item, error) {
 	return i, err
 }
 
+const resetItems = `-- name: ResetItems :exec
+DELETE FROM items
+`
+
+func (q *Queries) ResetItems(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, resetItems)
+	return err
+}
+
 const updateCat = `-- name: UpdateCat :exec
 UPDATE items
 SET category = $1, updated_at = $2
