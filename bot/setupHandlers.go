@@ -107,4 +107,40 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 			fmt.Println("Failed sending game registration response:", err)
 		}
 	}
+
+	/*Register item Syntax:
+	!register item name*/
+	if strings.ToLower(cmdArgs[0]) == "item" {
+		_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+		if errors.Is(err, sql.ErrNoRows) {
+			_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("%s item already exists.", cmdArgs[1]))
+			if err != nil {
+				fmt.Println("Failed sending duplicate item response:", err)
+			}
+			return
+		}
+		if err != nil {
+			_, err = s.ChannelMessageSend(e.ChannelID, "Something went wrong while trying to fetch item.")
+			if err != nil {
+				fmt.Println("Failed sending failed item fetch response:", err)
+			}
+			return
+		}
+		item, err := st.db.CreateItem(context.Background(), database.CreateItemParams{
+			Name:      cmdArgs[1],
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		})
+		if err != nil {
+			_, err = s.ChannelMessageSend(e.ChannelID, "Something went wrong while trying to register item.")
+			if err != nil {
+				fmt.Println("Failed sending failed item register response:", err)
+			}
+			return
+		}
+		_, err = s.ChannelMessageSend(e.ChannelID, fmt.Sprintf("Registered %s item.", item.Name))
+		if err != nil {
+			fmt.Println("Failed sending register item response:", err)
+		}
+	}
 }

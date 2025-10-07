@@ -70,6 +70,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				UpdatedAt: time.Now(),
 				Quantity:  int32(quant),
 				OwnerID:   player_id,
+				ItemName:  cmdArgs[1],
 			})
 			if err != nil {
 				_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
@@ -110,6 +111,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				UpdatedAt: time.Now(),
 				Quantity:  int32(quant),
 				OwnerID:   player_id,
+				ItemName:  cmdArgs[1],
 			})
 			if err != nil {
 				_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
@@ -221,6 +223,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			UpdatedAt: time.Now(),
 			Quantity:  int32(quant),
 			OwnerID:   player.ID,
+			ItemName:  cmdArgs[2],
 		})
 		if err != nil {
 			_, err = s.ChannelMessageSend(e.ChannelID, "Failed to add Inventory entry.")
