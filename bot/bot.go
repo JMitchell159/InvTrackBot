@@ -79,8 +79,12 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			return
 		}
 		cmd := args[0][len(prefix):]
-		if cmd == "reset" {
+		switch cmd {
+		case "reset":
 			st.reset(s, e)
+			return
+		case "listGames":
+			st.listGames(s, e)
 			return
 		}
 		if len(args) < 2 {

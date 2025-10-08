@@ -18,3 +18,8 @@ WHERE id = $1;
 SELECT *
 FROM games
 WHERE name = $1 AND server_id = $2;
+
+-- name: GetGamesByServer :many
+SELECT *
+FROM games
+WHERE server_id = $1;

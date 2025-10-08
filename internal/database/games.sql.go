@@ -93,3 +93,38 @@ func (q *Queries) GetGameByName(ctx context.Context, arg GetGameByNameParams) (G
 	)
 	return i, err
 }
+
+const getGamesByServer = `-- name: GetGamesByServer :many
+SELECT id, created_at, updated_at, name, server_id
+FROM games
+WHERE server_id = $1
+`
+
+func (q *Queries) GetGamesByServer(ctx context.Context, serverID string) ([]Game, error) {
+	rows, err := q.db.QueryContext(ctx, getGamesByServer, serverID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Game
+	for rows.Next() {
+		var i Game
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.ServerID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
