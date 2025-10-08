@@ -102,6 +102,8 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			st.addItem(s, e, arguments)
 		case "updateItem":
 			st.updateItem(s, e, arguments)
+		case "listPlayers":
+			st.listPlayers(s, e, arguments)
 		default:
 			sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd), "Failed sending Unknown Command response:")
 		}

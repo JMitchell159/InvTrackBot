@@ -93,3 +93,47 @@ func (q *Queries) GetPlayerByName(ctx context.Context, arg GetPlayerByNameParams
 	)
 	return i, err
 }
+
+const getPlayersByGame = `-- name: GetPlayersByGame :many
+SELECT id, created_at, updated_at, name, game_id
+FROM players
+WHERE game_id IN (
+    SELECT games.id
+    FROM games
+    WHERE games.name = $1 AND games.server_id = $2
+)
+`
+
+type GetPlayersByGameParams struct {
+	Name     string
+	ServerID string
+}
+
+func (q *Queries) GetPlayersByGame(ctx context.Context, arg GetPlayersByGameParams) ([]Player, error) {
+	rows, err := q.db.QueryContext(ctx, getPlayersByGame, arg.Name, arg.ServerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Player
+	for rows.Next() {
+		var i Player
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Name,
+			&i.GameID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

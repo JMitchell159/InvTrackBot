@@ -18,3 +18,12 @@ WHERE id = $1;
 SELECT *
 FROM players
 WHERE name = $1 AND game_id = $2;
+
+-- name: GetPlayersByGame :many
+SELECT *
+FROM players
+WHERE game_id IN (
+    SELECT games.id
+    FROM games
+    WHERE games.name = $1 AND games.server_id = $2
+);

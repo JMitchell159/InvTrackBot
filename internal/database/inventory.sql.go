@@ -86,7 +86,7 @@ INNER JOIN items
 ON inventory.item_name = items.name
 WHERE inventory.owner_id IN (
     SELECT players.id
-    from players
+    FROM players
     WHERE players.name = $1 AND players.game_id = $2
 )
 `

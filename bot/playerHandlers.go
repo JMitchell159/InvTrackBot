@@ -53,3 +53,25 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 	}
 	sendMessage(s, e.ChannelID, fmt.Sprintf("Added player %s w/ ID: %s.", player.Name, player.ID.String()), "Failed sending add player response:")
 }
+
+func (st *state) listPlayers(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
+	/*Syntax:
+	!listPlayers <game_name>*/
+	players, err := st.db.GetPlayersByGame(context.Background(), database.GetPlayersByGameParams{
+		Name:     cmdArgs[0],
+		ServerID: e.GuildID,
+	})
+	if err != nil {
+		sendMessage(s, e.ChannelID, "Something went wrong while trying to fetch players.", "Failed sending failed player fetch response:")
+		return
+	}
+	if len(players) == 0 {
+		sendMessage(s, e.ChannelID, "There are no players in this game.", "Failed sending no players response:")
+		return
+	}
+	msg := fmt.Sprintf("Players in %s:\n", cmdArgs[0])
+	for _, p := range players {
+		msg = fmt.Sprintf("%s- %s (ID: %s)\n", msg, p.Name, p.ID.String())
+	}
+	sendMessage(s, e.ChannelID, msg, "Failed to send players list response:")
+}
