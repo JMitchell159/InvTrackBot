@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/JMitchell159/InvTrackBot/internal/database"
@@ -229,4 +230,57 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		msg = fmt.Sprintf("%s added %d %ss to their inventory.", cmdArgs[1], quant, cmdArgs[2])
 	}
 	sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
+}
+
+func (st *state) updateItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
+	if len(cmdArgs) < 3 {
+		sendMessage(s, e.ChannelID, "The updateItem command must have 3 arguments. The syntax is as follows: '!updateItem description|category <item_name> <description|category>.'", "Failed to send required arguments response:")
+		return
+	}
+
+	_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+	if errors.Is(err, sql.ErrNoRows) {
+		sendMessage(s, e.ChannelID, "That item does not exist. Please register it first.", "Failed to send invalid item response:")
+		return
+	}
+
+	/*Syntax:
+	!updateItem description <item_name> <description>*/
+	if strings.ToLower(cmdArgs[0]) == "description" {
+		err = st.db.UpdateDesc(context.Background(), database.UpdateDescParams{
+			Description: sql.NullString{
+				String: cmdArgs[2],
+				Valid:  true,
+			},
+			UpdatedAt: time.Now(),
+			Name:      cmdArgs[1],
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Failed to update description.", "Failed to send failed description update response:")
+			return
+		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's description to %s.", cmdArgs[1], cmdArgs[2]), "Failed to send description update response:")
+		return
+	}
+
+	/*Syntax:
+	!updateItem category <item_name> <category>*/
+	if strings.ToLower(cmdArgs[0]) == "category" {
+		err = st.db.UpdateCat(context.Background(), database.UpdateCatParams{
+			Category: sql.NullString{
+				String: cmdArgs[2],
+				Valid:  true,
+			},
+			UpdatedAt: time.Now(),
+			Name:      cmdArgs[1],
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Failed to update category.", "Failed to send failed category update response:")
+			return
+		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's category to %s.", cmdArgs[1], cmdArgs[2]), "Failed to send category update response:")
+		return
+	}
+
+	sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command updateItem %s.", cmdArgs[0]), "Failed sending Unknown Command response:")
 }

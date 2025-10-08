@@ -81,15 +81,11 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 	}
 
 	/*Register item Syntax:
-	!register item name*/
+	!register item <item_name>*/
 	if strings.ToLower(cmdArgs[0]) == "item" {
 		_, err := st.db.GetItem(context.Background(), cmdArgs[1])
-		if errors.Is(err, sql.ErrNoRows) {
+		if err == nil {
 			sendMessage(s, e.ChannelID, "This item already exists.", "Failed sending duplicate item response:")
-			return
-		}
-		if err != nil {
-			sendMessage(s, e.ChannelID, "Something went wrong while trying to fetch item.", "Failed sending failed item fetch repsonse:")
 			return
 		}
 		item, err := st.db.CreateItem(context.Background(), database.CreateItemParams{

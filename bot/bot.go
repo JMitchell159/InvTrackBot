@@ -73,7 +73,11 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 	prefix := st.cfg.BotPrefix
 
 	if strings.HasPrefix(e.Content, prefix) {
-		args := strings.Fields(e.Content)[strings.Index(e.Content, prefix):]
+		args, err := parseUserInput(e.Content)
+		if err != nil {
+			sendMessage(s, e.ChannelID, "something went wrong while trying to parse input.", "Failed to send failed input parse response:")
+			return
+		}
 		cmd := args[0][len(prefix):]
 		if cmd == "reset" {
 			st.reset(s, e)
@@ -92,6 +96,8 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			st.addPlayer(s, e, arguments)
 		case "addItem":
 			st.addItem(s, e, arguments)
+		case "updateItem":
+			st.updateItem(s, e, arguments)
 		default:
 			sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd), "Failed sending Unknown Command response:")
 		}
