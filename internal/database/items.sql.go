@@ -40,6 +40,117 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 	return i, err
 }
 
+const createItemFull = `-- name: CreateItemFull :one
+INSERT INTO items (name, created_at, updated_at, category, description)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
+RETURNING name, created_at, updated_at, description, category
+`
+
+type CreateItemFullParams struct {
+	Name        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Category    sql.NullString
+	Description sql.NullString
+}
+
+func (q *Queries) CreateItemFull(ctx context.Context, arg CreateItemFullParams) (Item, error) {
+	row := q.db.QueryRowContext(ctx, createItemFull,
+		arg.Name,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.Category,
+		arg.Description,
+	)
+	var i Item
+	err := row.Scan(
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.Category,
+	)
+	return i, err
+}
+
+const createItemWCat = `-- name: CreateItemWCat :one
+INSERT INTO items (name, created_at, updated_at, category)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+RETURNING name, created_at, updated_at, description, category
+`
+
+type CreateItemWCatParams struct {
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Category  sql.NullString
+}
+
+func (q *Queries) CreateItemWCat(ctx context.Context, arg CreateItemWCatParams) (Item, error) {
+	row := q.db.QueryRowContext(ctx, createItemWCat,
+		arg.Name,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.Category,
+	)
+	var i Item
+	err := row.Scan(
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.Category,
+	)
+	return i, err
+}
+
+const createItemWDesc = `-- name: CreateItemWDesc :one
+INSERT INTO items (name, created_at, updated_at, description)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+RETURNING name, created_at, updated_at, description, category
+`
+
+type CreateItemWDescParams struct {
+	Name        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Description sql.NullString
+}
+
+func (q *Queries) CreateItemWDesc(ctx context.Context, arg CreateItemWDescParams) (Item, error) {
+	row := q.db.QueryRowContext(ctx, createItemWDesc,
+		arg.Name,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.Description,
+	)
+	var i Item
+	err := row.Scan(
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Description,
+		&i.Category,
+	)
+	return i, err
+}
+
 const getItem = `-- name: GetItem :one
 SELECT name, created_at, updated_at, description, category
 FROM items
@@ -57,6 +168,41 @@ func (q *Queries) GetItem(ctx context.Context, name string) (Item, error) {
 		&i.Category,
 	)
 	return i, err
+}
+
+const getItemsByCategory = `-- name: GetItemsByCategory :many
+SELECT name, created_at, updated_at, description, category
+FROM items
+WHERE category = $1
+`
+
+func (q *Queries) GetItemsByCategory(ctx context.Context, category sql.NullString) ([]Item, error) {
+	rows, err := q.db.QueryContext(ctx, getItemsByCategory, category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Item
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.Category,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const resetItems = `-- name: ResetItems :exec

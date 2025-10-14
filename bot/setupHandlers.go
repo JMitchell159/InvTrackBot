@@ -101,5 +101,84 @@ func (st *state) register(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 		return
 	}
 
+	/*Register item w/ desc Syntax:
+	!register itemDesc <item_name> <description>*/
+	if strings.ToLower(cmdArgs[0]) == "itemdesc" {
+		_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+		if err == nil {
+			sendMessage(s, e.ChannelID, "This item already exists.", "Failed sending duplicate item response:")
+			return
+		}
+		item, err := st.db.CreateItemWDesc(context.Background(), database.CreateItemWDescParams{
+			Name:      cmdArgs[1],
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Description: sql.NullString{
+				Valid:  true,
+				String: cmdArgs[2],
+			},
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while trying to register item.", "Failed sending failed item register resposne:")
+			return
+		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Registered %s item with description: %s", item.Name, item.Description.String), "Failed sending register item response:")
+		return
+	}
+
+	/*Register item w/ cat Syntax:
+	!register itemCat <item_name> <category>*/
+	if strings.ToLower(cmdArgs[0]) == "itemcat" {
+		_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+		if err == nil {
+			sendMessage(s, e.ChannelID, "This item already exists.", "Failed sending duplicate item response:")
+			return
+		}
+		item, err := st.db.CreateItemWCat(context.Background(), database.CreateItemWCatParams{
+			Name:      cmdArgs[1],
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Category: sql.NullString{
+				Valid:  true,
+				String: cmdArgs[2],
+			},
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while trying to register item.", "Failed sending failed item register response:")
+			return
+		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Registered item %s with category: %s", item.Name, item.Category.String), "Failed sending register item response:")
+		return
+	}
+
+	/*Register full item Syntax:
+	!register itemFull <item_name> <category> <description>*/
+	if strings.ToLower(cmdArgs[0]) == "itemfull" {
+		_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+		if err == nil {
+			sendMessage(s, e.ChannelID, "This item already exists.", "Failed sending duplicate item response:")
+			return
+		}
+		item, err := st.db.CreateItemFull(context.Background(), database.CreateItemFullParams{
+			Name:      cmdArgs[1],
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Category: sql.NullString{
+				Valid:  true,
+				String: cmdArgs[2],
+			},
+			Description: sql.NullString{
+				Valid:  true,
+				String: cmdArgs[3],
+			},
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while trying to register item.", "Failed sending failed item register response:")
+			return
+		}
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Registered item %s with category: %s\nand description: %s", item.Name, item.Category.String, item.Description.String), "Failed sending register item response:")
+		return
+	}
+
 	sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command register %s.", cmdArgs[0]), "Failed sending Unknown Command response:")
 }

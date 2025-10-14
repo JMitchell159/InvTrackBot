@@ -78,6 +78,7 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			sendMessage(s, e.ChannelID, "something went wrong while trying to parse input.", "Failed to send failed input parse response:")
 			return
 		}
+
 		cmd := args[0][len(prefix):]
 		switch cmd {
 		case "reset":
@@ -91,8 +92,8 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			sendMessage(s, e.ChannelID, "All commands must have at least 2 fields, the command name and at least one qualifier.", "Failed sending required arguments response:")
 			return
 		}
-		arguments := args[1:]
 
+		arguments := args[1:]
 		switch cmd {
 		case "register":
 			st.register(s, e, arguments)
@@ -104,6 +105,12 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			st.updateItem(s, e, arguments)
 		case "listPlayers":
 			st.listPlayers(s, e, arguments)
+		case "listItem":
+			st.listItem(s, e, arguments)
+		case "listItems":
+			st.listItems(s, e, arguments)
+		case "listInventory":
+			st.listInventory(s, e, arguments)
 		default:
 			sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd), "Failed sending Unknown Command response:")
 		}

@@ -26,7 +26,7 @@ WITH inserted_line_item AS (
     )
     RETURNING id, created_at, updated_at, quantity, owner_id, item_name
 )
-SELECT inserted_line_item.id, inserted_line_item.created_at, inserted_line_item.updated_at, inserted_line_item.quantity, inserted_line_item.owner_id, inserted_line_item.item_name, items.name AS item_name, players.name AS owner_name
+SELECT inserted_line_item.id, inserted_line_item.created_at, inserted_line_item.updated_at, inserted_line_item.quantity, inserted_line_item.owner_id, inserted_line_item.item_name, players.name AS owner_name
 FROM inserted_line_item
 INNER JOIN players
 ON inserted_line_item.owner_id = players.id
@@ -44,14 +44,13 @@ type AddLineItemParams struct {
 }
 
 type AddLineItemRow struct {
-	ID         uuid.UUID
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Quantity   int32
-	OwnerID    uuid.UUID
-	ItemName   string
-	ItemName_2 string
-	OwnerName  string
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Quantity  int32
+	OwnerID   uuid.UUID
+	ItemName  string
+	OwnerName string
 }
 
 func (q *Queries) AddLineItem(ctx context.Context, arg AddLineItemParams) (AddLineItemRow, error) {
@@ -71,7 +70,6 @@ func (q *Queries) AddLineItem(ctx context.Context, arg AddLineItemParams) (AddLi
 		&i.Quantity,
 		&i.OwnerID,
 		&i.ItemName,
-		&i.ItemName_2,
 		&i.OwnerName,
 	)
 	return i, err
@@ -84,17 +82,8 @@ INNER JOIN players
 ON inventory.owner_id = players.id
 INNER JOIN items
 ON inventory.item_name = items.name
-WHERE inventory.owner_id IN (
-    SELECT players.id
-    FROM players
-    WHERE players.name = $1 AND players.game_id = $2
-)
+WHERE inventory.owner_id = $1
 `
-
-type GetItemsByOwnerParams struct {
-	Name   string
-	GameID uuid.UUID
-}
 
 type GetItemsByOwnerRow struct {
 	Name        string
@@ -105,8 +94,8 @@ type GetItemsByOwnerRow struct {
 	Quantity    int32
 }
 
-func (q *Queries) GetItemsByOwner(ctx context.Context, arg GetItemsByOwnerParams) ([]GetItemsByOwnerRow, error) {
-	rows, err := q.db.QueryContext(ctx, getItemsByOwner, arg.Name, arg.GameID)
+func (q *Queries) GetItemsByOwner(ctx context.Context, ownerID uuid.UUID) ([]GetItemsByOwnerRow, error) {
+	rows, err := q.db.QueryContext(ctx, getItemsByOwner, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +103,69 @@ func (q *Queries) GetItemsByOwner(ctx context.Context, arg GetItemsByOwnerParams
 	var items []GetItemsByOwnerRow
 	for rows.Next() {
 		var i GetItemsByOwnerRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.Category,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getItemsByOwnerName = `-- name: GetItemsByOwnerName :many
+SELECT items.name, items.created_at, items.updated_at, items.description, items.category, inventory.quantity AS quantity
+FROM inventory
+INNER JOIN players
+ON inventory.owner_id = players.id
+INNER JOIN items
+ON inventory.item_name = items.name
+WHERE inventory.owner_id IN (
+    SELECT players.id
+    FROM players
+    WHERE players.name = $1 AND players.game_id IN (
+        SELECT games.id
+        FROM games
+        WHERE games.name = $2 AND games.server_id = $3
+    )
+)
+`
+
+type GetItemsByOwnerNameParams struct {
+	Name     string
+	Name_2   string
+	ServerID string
+}
+
+type GetItemsByOwnerNameRow struct {
+	Name        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Description sql.NullString
+	Category    sql.NullString
+	Quantity    int32
+}
+
+func (q *Queries) GetItemsByOwnerName(ctx context.Context, arg GetItemsByOwnerNameParams) ([]GetItemsByOwnerNameRow, error) {
+	rows, err := q.db.QueryContext(ctx, getItemsByOwnerName, arg.Name, arg.Name_2, arg.ServerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemsByOwnerNameRow
+	for rows.Next() {
+		var i GetItemsByOwnerNameRow
 		if err := rows.Scan(
 			&i.Name,
 			&i.CreatedAt,
@@ -174,17 +226,28 @@ ON inventory.item_name = items.name
 WHERE inventory.owner_id IN (
     SELECT players.id
     FROM players
-    WHERE players.name = $1 AND players.game_id = $2
-) AND inventory.item_name = $2
+    WHERE players.name = $1 AND players.game_id IN (
+        SELECT games.id
+        FROM games
+        WHERE games.name = $2 AND games.server_id = $3
+    )
+) AND inventory.item_name = $4
 `
 
 type GetLineItemByItemAndOwnerNameParams struct {
-	Name   string
-	GameID uuid.UUID
+	Name     string
+	Name_2   string
+	ServerID string
+	ItemName string
 }
 
 func (q *Queries) GetLineItemByItemAndOwnerName(ctx context.Context, arg GetLineItemByItemAndOwnerNameParams) (Inventory, error) {
-	row := q.db.QueryRowContext(ctx, getLineItemByItemAndOwnerName, arg.Name, arg.GameID)
+	row := q.db.QueryRowContext(ctx, getLineItemByItemAndOwnerName,
+		arg.Name,
+		arg.Name_2,
+		arg.ServerID,
+		arg.ItemName,
+	)
 	var i Inventory
 	err := row.Scan(
 		&i.ID,
@@ -197,24 +260,59 @@ func (q *Queries) GetLineItemByItemAndOwnerName(ctx context.Context, arg GetLine
 	return i, err
 }
 
-const updateLineItem = `-- name: UpdateLineItem :exec
+const updateLineItemWID = `-- name: UpdateLineItemWID :exec
 UPDATE inventory
 SET quantity = quantity + $1, updated_at = $2
 WHERE owner_id = $3 AND item_name = $4
 `
 
-type UpdateLineItemParams struct {
+type UpdateLineItemWIDParams struct {
 	Quantity  int32
 	UpdatedAt time.Time
 	OwnerID   uuid.UUID
 	ItemName  string
 }
 
-func (q *Queries) UpdateLineItem(ctx context.Context, arg UpdateLineItemParams) error {
-	_, err := q.db.ExecContext(ctx, updateLineItem,
+func (q *Queries) UpdateLineItemWID(ctx context.Context, arg UpdateLineItemWIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateLineItemWID,
 		arg.Quantity,
 		arg.UpdatedAt,
 		arg.OwnerID,
+		arg.ItemName,
+	)
+	return err
+}
+
+const updateLineItemWName = `-- name: UpdateLineItemWName :exec
+UPDATE inventory
+SET quantity = quantity + $1, updated_at = $2
+WHERE owner_id IN (
+    SELECT players.id
+    FROM players
+    WHERE players.name = $3 AND players.game_id IN (
+        SELECT games.id
+        FROM games
+        WHERE games.name = $4 AND games.server_id = $5
+    )
+) AND item_name = $6
+`
+
+type UpdateLineItemWNameParams struct {
+	Quantity  int32
+	UpdatedAt time.Time
+	Name      string
+	Name_2    string
+	ServerID  string
+	ItemName  string
+}
+
+func (q *Queries) UpdateLineItemWName(ctx context.Context, arg UpdateLineItemWNameParams) error {
+	_, err := q.db.ExecContext(ctx, updateLineItemWName,
+		arg.Quantity,
+		arg.UpdatedAt,
+		arg.Name,
+		arg.Name_2,
+		arg.ServerID,
 		arg.ItemName,
 	)
 	return err
