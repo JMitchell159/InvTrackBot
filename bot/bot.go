@@ -111,6 +111,8 @@ func messageHandler(s *discordgo.Session, e *discordgo.MessageCreate, st *state)
 			st.listItems(s, e, arguments)
 		case "listInventory":
 			st.listInventory(s, e, arguments)
+		case "listInvByCat":
+			st.listInventoryByCat(s, e, arguments)
 		default:
 			sendMessage(s, e.ChannelID, fmt.Sprintf("Unknown command %q.", cmd), "Failed sending Unknown Command response:")
 		}

@@ -62,6 +62,32 @@ INNER JOIN items
 ON inventory.item_name = items.name
 WHERE inventory.owner_id = $1;
 
+-- name: GetItemsByOwnerNameAndCat :many
+SELECT items.*, inventory.quantity AS quantity
+FROM inventory
+INNER JOIN players
+ON inventory.owner_id = players.id
+INNER JOIN items
+ON inventory.item_name = items.name
+WHERE inventory.owner_id IN (
+    SELECT players.id
+    FROM players
+    WHERE players.name = $1 AND players.game_id IN (
+        SELECT games.id
+        FROM games
+        WHERE games.name = $2 AND games.server_id = $3
+    )
+) AND items.category = $4;
+
+-- name: GetItemsByOwnerAndCat :many
+SELECT items.*, inventory.quantity AS quantity
+FROM inventory
+INNER JOIN players
+ON inventory.owner_id = players.id
+INNER JOIN items
+ON inventory.item_name = items.name
+WHERE inventory.owner_id = $1 AND items.category = $2;
+
 -- name: GetLineItemByItemAndOwner :one
 SELECT inventory.*
 FROM inventory

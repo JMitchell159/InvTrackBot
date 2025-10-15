@@ -124,6 +124,60 @@ func (q *Queries) GetItemsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Get
 	return items, nil
 }
 
+const getItemsByOwnerAndCat = `-- name: GetItemsByOwnerAndCat :many
+SELECT items.name, items.created_at, items.updated_at, items.description, items.category, inventory.quantity AS quantity
+FROM inventory
+INNER JOIN players
+ON inventory.owner_id = players.id
+INNER JOIN items
+ON inventory.item_name = items.name
+WHERE inventory.owner_id = $1 AND items.category = $2
+`
+
+type GetItemsByOwnerAndCatParams struct {
+	OwnerID  uuid.UUID
+	Category sql.NullString
+}
+
+type GetItemsByOwnerAndCatRow struct {
+	Name        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Description sql.NullString
+	Category    sql.NullString
+	Quantity    int32
+}
+
+func (q *Queries) GetItemsByOwnerAndCat(ctx context.Context, arg GetItemsByOwnerAndCatParams) ([]GetItemsByOwnerAndCatRow, error) {
+	rows, err := q.db.QueryContext(ctx, getItemsByOwnerAndCat, arg.OwnerID, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemsByOwnerAndCatRow
+	for rows.Next() {
+		var i GetItemsByOwnerAndCatRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.Category,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getItemsByOwnerName = `-- name: GetItemsByOwnerName :many
 SELECT items.name, items.created_at, items.updated_at, items.description, items.category, inventory.quantity AS quantity
 FROM inventory
@@ -166,6 +220,75 @@ func (q *Queries) GetItemsByOwnerName(ctx context.Context, arg GetItemsByOwnerNa
 	var items []GetItemsByOwnerNameRow
 	for rows.Next() {
 		var i GetItemsByOwnerNameRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.Category,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getItemsByOwnerNameAndCat = `-- name: GetItemsByOwnerNameAndCat :many
+SELECT items.name, items.created_at, items.updated_at, items.description, items.category, inventory.quantity AS quantity
+FROM inventory
+INNER JOIN players
+ON inventory.owner_id = players.id
+INNER JOIN items
+ON inventory.item_name = items.name
+WHERE inventory.owner_id IN (
+    SELECT players.id
+    FROM players
+    WHERE players.name = $1 AND players.game_id IN (
+        SELECT games.id
+        FROM games
+        WHERE games.name = $2 AND games.server_id = $3
+    )
+) AND items.category = $4
+`
+
+type GetItemsByOwnerNameAndCatParams struct {
+	Name     string
+	Name_2   string
+	ServerID string
+	Category sql.NullString
+}
+
+type GetItemsByOwnerNameAndCatRow struct {
+	Name        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Description sql.NullString
+	Category    sql.NullString
+	Quantity    int32
+}
+
+func (q *Queries) GetItemsByOwnerNameAndCat(ctx context.Context, arg GetItemsByOwnerNameAndCatParams) ([]GetItemsByOwnerNameAndCatRow, error) {
+	rows, err := q.db.QueryContext(ctx, getItemsByOwnerNameAndCat,
+		arg.Name,
+		arg.Name_2,
+		arg.ServerID,
+		arg.Category,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetItemsByOwnerNameAndCatRow
+	for rows.Next() {
+		var i GetItemsByOwnerNameAndCatRow
 		if err := rows.Scan(
 			&i.Name,
 			&i.CreatedAt,

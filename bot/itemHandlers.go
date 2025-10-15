@@ -380,6 +380,7 @@ func (st *state) listInventory(s *discordgo.Session, e *discordgo.MessageCreate,
 			msg = ""
 		}
 		sendMessage(s, e.ChannelID, "End of Inventory", "Failed to send inventory response:")
+		return
 	}
 
 	inventory, err := st.db.GetItemsByOwnerName(context.Background(), database.GetItemsByOwnerNameParams{
@@ -397,6 +398,94 @@ func (st *state) listInventory(s *discordgo.Session, e *discordgo.MessageCreate,
 	}
 
 	sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory:", cmdArgs[0]), "Failed:")
+	msg := ""
+	for _, item := range inventory {
+		if item.Description.Valid {
+			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+		} else {
+			msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+		}
+		if item.Category.Valid {
+			msg += fmt.Sprintf("Category: %s", item.Category.String)
+		}
+		sendMessage(s, e.ChannelID, msg, "Failed:")
+		msg = ""
+	}
+	sendMessage(s, e.ChannelID, "End of Inventory", "Failed to send inventory response:")
+}
+
+func (st *state) listInventoryByCat(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
+	/*Syntax:
+	!listInvByCat <player_id> <category>
+	OR
+	!listInvByCat <player_name> <game_name> <category>*/
+	if len(cmdArgs) < 2 {
+		sendMessage(s, e.ChannelID, "The list by category command takes at least 2 arguments. Look in the help section for more info on usage.", "Failed to send required arguments response:")
+		return
+	}
+	if len(cmdArgs) == 2 {
+		player_id, err := uuid.Parse(cmdArgs[0])
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while parsing player id string.", "Failed to send failed uuid parse response:")
+			return
+		}
+
+		inventory, err := st.db.GetItemsByOwnerAndCat(context.Background(), database.GetItemsByOwnerAndCatParams{
+			OwnerID: player_id,
+			Category: sql.NullString{
+				Valid:  true,
+				String: cmdArgs[1],
+			},
+		})
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while fetching inventory.", "Failed to send failed inventory fetch response:")
+			return
+		}
+		if len(inventory) == 0 {
+			sendMessage(s, e.ChannelID, "You have no items in that category.", "Failed to send empty list response:")
+			return
+		}
+
+		player, err := st.db.GetPlayer(context.Background(), player_id)
+		if err != nil {
+			sendMessage(s, e.ChannelID, "Something went wrong while fetching player.", "Failed to send failed player fetch response:")
+			return
+		}
+
+		sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory (Category: %s):", player.Name, cmdArgs[1]), "Failed:")
+		msg := ""
+		for _, item := range inventory {
+			if item.Description.Valid {
+				msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+			} else {
+				msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+			}
+			sendMessage(s, e.ChannelID, msg, "Failed:")
+			msg = ""
+		}
+		sendMessage(s, e.ChannelID, "End of Inventory", "Failed to send inventory response:")
+		return
+	}
+
+	inventory, err := st.db.GetItemsByOwnerNameAndCat(context.Background(), database.GetItemsByOwnerNameAndCatParams{
+		Name:     cmdArgs[0],
+		Name_2:   cmdArgs[1],
+		ServerID: e.GuildID,
+		Category: sql.NullString{
+			Valid:  true,
+			String: cmdArgs[2],
+		},
+	})
+	if err != nil {
+		sendMessage(s, e.ChannelID, "Something went wrong while fetching inventory.", "Failed to send failed inventory fetch response:")
+		return
+	}
+	if len(inventory) == 0 {
+		sendMessage(s, e.ChannelID, "You have no items in that category.", "Failed to send empty list response:")
+		return
+	}
+
+	sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory (Category: %s):", cmdArgs[0], cmdArgs[2]), "Failed:")
 	msg := ""
 	for _, item := range inventory {
 		if item.Description.Valid {
