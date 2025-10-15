@@ -381,4 +381,34 @@ func (st *state) listInventory(s *discordgo.Session, e *discordgo.MessageCreate,
 		}
 		sendMessage(s, e.ChannelID, "End of Inventory", "Failed to send inventory response:")
 	}
+
+	inventory, err := st.db.GetItemsByOwnerName(context.Background(), database.GetItemsByOwnerNameParams{
+		Name:     cmdArgs[0],
+		Name_2:   cmdArgs[1],
+		ServerID: e.GuildID,
+	})
+	if err != nil {
+		sendMessage(s, e.ChannelID, "Something went wrong while fetching inventory.", "Failed to send failed inventory fetch response:")
+		return
+	}
+	if len(inventory) == 0 {
+		sendMessage(s, e.ChannelID, "This inventory is empty, you should add some items to it.", "Failed to send empty inventory response:")
+		return
+	}
+
+	sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory:", cmdArgs[0]), "Failed:")
+	msg := ""
+	for _, item := range inventory {
+		if item.Description.Valid {
+			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+		} else {
+			msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+		}
+		if item.Category.Valid {
+			msg += fmt.Sprintf("Category: %s", item.Category.String)
+		}
+		sendMessage(s, e.ChannelID, msg, "Failed:")
+		msg = ""
+	}
+	sendMessage(s, e.ChannelID, "End of Inventory", "Failed to send inventory response:")
 }
