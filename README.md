@@ -24,7 +24,7 @@ The name must only contain alphanumeric characters.
 
 ### 3. Add Players/Team Aliases
 `!addPlayer 'game_name' 'player_name'`
-The player's name number only contain alphanumeric characters.
+The player's name must only contain alphanumeric characters.
 
 Each command will give a feedback message on if it was successful or not and the reason if it was not successful. If successful, it will print the relevant information for that entry, such as name and ID.
 
