@@ -27,7 +27,12 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 	if len(cmdArgs) == 3 {
 		player_id, err := uuid.Parse(cmdArgs[0])
 		if err != nil {
-			sendMessage(s, e.ChannelID, "Failed to parse uuid.", "Failed to send failed uuid parse response:")
+			sendMessage(s, e.ChannelID, "Failed to parse uuid.", "Failed sending failed uuid parse response:")
+			return
+		}
+		player, err := st.db.GetPlayer(context.Background(), player_id)
+		if errors.Is(err, sql.ErrNoRows) {
+			sendMessage(s, e.ChannelID, "Specified Player ID does not exist.", "failed sending invalid Player ID response:")
 			return
 		}
 		quant, err := strconv.Atoi(cmdArgs[2])
@@ -35,14 +40,15 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			sendMessage(s, e.ChannelID, "Failed to parse quantity argument.", "Failed sending failed quantity parse response:")
 			return
 		}
-		_, err = st.db.GetItem(context.Background(), cmdArgs[1])
+		itemWithHash := fmt.Sprintf("%s[%s]", cmdArgs[1], player.GameID.String())
+		_, err = st.db.GetItem(context.Background(), itemWithHash)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			sendMessage(s, e.ChannelID, "Failed to fetch item.", "Failed sending failed item fetch response:")
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = st.db.CreateItem(context.Background(), database.CreateItemParams{
-				Name:      cmdArgs[1],
+				Name:      itemWithHash,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			})
@@ -56,7 +62,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				UpdatedAt: time.Now(),
 				Quantity:  int32(quant),
 				OwnerID:   player_id,
-				ItemName:  cmdArgs[1],
+				ItemName:  itemWithHash,
 			})
 			if err != nil {
 				sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
@@ -72,14 +78,9 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 			return
 		}
-		_, err = st.db.GetPlayer(context.Background(), player_id)
-		if errors.Is(err, sql.ErrNoRows) {
-			sendMessage(s, e.ChannelID, fmt.Sprintf("Player_id %s does not exist.", player_id.String()), "Failed to send invalid player_id response:")
-			return
-		}
 		_, err = st.db.GetLineItemByItemAndOwner(context.Background(), database.GetLineItemByItemAndOwnerParams{
 			OwnerID:  player_id,
-			ItemName: cmdArgs[1],
+			ItemName: itemWithHash,
 		})
 		if errors.Is(err, sql.ErrNoRows) {
 			lineItem, err := st.db.AddLineItem(context.Background(), database.AddLineItemParams{
@@ -88,18 +89,19 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 				UpdatedAt: time.Now(),
 				Quantity:  int32(quant),
 				OwnerID:   player_id,
-				ItemName:  cmdArgs[1],
+				ItemName:  itemWithHash,
 			})
 			if err != nil {
 				sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
 				return
 			}
 			msg := ""
+			split := strings.Split(lineItem.ItemName, "[")
 			if lineItem.Quantity == 1 {
-				msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, lineItem.ItemName)
+				msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, split[0])
 			}
 			if lineItem.Quantity > 1 {
-				msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
+				msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, split[0])
 			}
 			sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 			return
@@ -108,13 +110,13 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			Quantity:  int32(quant),
 			UpdatedAt: time.Now(),
 			OwnerID:   player_id,
-			ItemName:  cmdArgs[1],
+			ItemName:  itemWithHash,
 		})
 		if err != nil {
 			sendMessage(s, e.ChannelID, "Failed to update inventory.", "Failed to send failed inventory update response:")
 			return
 		}
-		player, _ := st.db.GetPlayer(context.Background(), player_id)
+		player, _ = st.db.GetPlayer(context.Background(), player_id)
 		msg := ""
 		if quant == 1 {
 			msg = fmt.Sprintf("%s added 1 %s to their inventory.", player.Name, cmdArgs[1])
@@ -134,7 +136,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		ServerID: e.GuildID,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		sendMessage(s, e.ChannelID, fmt.Sprintf("Game %s does not exist in this server.", cmdArgs[0]), "Failed to send invalid game repsonse:")
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Game %s does not exist in this server.", cmdArgs[0]), "Failed to send invalid game response:")
 		return
 	}
 	if err != nil {
@@ -153,10 +155,11 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		sendMessage(s, e.ChannelID, "Something went wrong while fetching player.", "Failed to send failed player fetch response:")
 		return
 	}
-	_, err = st.db.GetItem(context.Background(), cmdArgs[2])
+	itemWithHash := fmt.Sprintf("%s[%s]", cmdArgs[2], game.ID.String())
+	_, err = st.db.GetItem(context.Background(), itemWithHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		_, err = st.db.CreateItem(context.Background(), database.CreateItemParams{
-			Name:      cmdArgs[2],
+			Name:      itemWithHash,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		})
@@ -170,25 +173,26 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			UpdatedAt: time.Now(),
 			Quantity:  int32(quant),
 			OwnerID:   player.ID,
-			ItemName:  cmdArgs[2],
+			ItemName:  itemWithHash,
 		})
 		if err != nil {
 			sendMessage(s, e.ChannelID, "Failed to add Inventory entry.", "Failed to send failed inventory add response:")
 			return
 		}
 		msg := ""
+		split := strings.Split(lineItem.ItemName, "[")
 		if lineItem.Quantity == 1 {
-			msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, lineItem.ItemName)
+			msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, split[0])
 		}
 		if lineItem.Quantity > 1 {
-			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
+			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, split[0])
 		}
 		sendMessage(s, e.ChannelID, msg, "Failed to send addItem response:")
 		return
 	}
 	_, err = st.db.GetLineItemByItemAndOwner(context.Background(), database.GetLineItemByItemAndOwnerParams{
 		OwnerID:  player.ID,
-		ItemName: cmdArgs[2],
+		ItemName: itemWithHash,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		lineItem, err := st.db.AddLineItem(context.Background(), database.AddLineItemParams{
@@ -197,18 +201,19 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 			UpdatedAt: time.Now(),
 			Quantity:  int32(quant),
 			OwnerID:   player.ID,
-			ItemName:  cmdArgs[2],
+			ItemName:  itemWithHash,
 		})
 		if err != nil {
 			sendMessage(s, e.ChannelID, "Something went wrong while adding inventory entry.", "Failed to send failed inventory addition response:")
 			return
 		}
 		msg := ""
+		split := strings.Split(lineItem.ItemName, "[")
 		if lineItem.Quantity == 1 {
-			msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, lineItem.ItemName)
+			msg = fmt.Sprintf("%s has 1 %s in their inventory.", lineItem.OwnerName, split[0])
 		}
 		if lineItem.Quantity > 1 {
-			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, lineItem.ItemName)
+			msg = fmt.Sprintf("%s has %d %ss in their inventory.", lineItem.OwnerName, lineItem.Quantity, split[0])
 		}
 		sendMessage(s, e.ChannelID, msg, "Failed to send addItem repsonse:")
 		return
@@ -217,7 +222,7 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 		Quantity:  int32(quant),
 		UpdatedAt: time.Now(),
 		OwnerID:   player.ID,
-		ItemName:  cmdArgs[2],
+		ItemName:  itemWithHash,
 	})
 	if err != nil {
 		sendMessage(s, e.ChannelID, "Failed to update inventory.", "Failed to send failed inventory update response:")
@@ -233,19 +238,29 @@ func (st *state) addItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdAr
 }
 
 func (st *state) updateItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
-	if len(cmdArgs) < 3 {
-		sendMessage(s, e.ChannelID, "The updateItem command must have 3 arguments. The syntax is as follows: '!updateItem description|category <item_name> <description|category>.'", "Failed to send required arguments response:")
+	if len(cmdArgs) < 4 {
+		sendMessage(s, e.ChannelID, "The updateItem command must have 4 arguments. The syntax is as follows: '!updateItem description|category <item_name> <game_name> <description|category>.'", "Failed to send required arguments response:")
 		return
 	}
 
-	_, err := st.db.GetItem(context.Background(), cmdArgs[1])
+	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
+		Name:     cmdArgs[2],
+		ServerID: e.GuildID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		sendMessage(s, e.ChannelID, "Specified game does not exist in this server.", "Failed to send invalid Game response:")
+		return
+	}
+
+	itemWithHash := fmt.Sprintf("%s[%s]", cmdArgs[1], game.ID.String())
+	_, err = st.db.GetItem(context.Background(), itemWithHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		sendMessage(s, e.ChannelID, "That item does not exist. Please register it first.", "Failed to send invalid item response:")
 		return
 	}
 
 	/*Syntax:
-	!updateItem description <item_name> <description>*/
+	!updateItem description <item_name> <game_name> <description>*/
 	if strings.ToLower(cmdArgs[0]) == "description" {
 		err = st.db.UpdateDesc(context.Background(), database.UpdateDescParams{
 			Description: sql.NullString{
@@ -253,18 +268,18 @@ func (st *state) updateItem(s *discordgo.Session, e *discordgo.MessageCreate, cm
 				Valid:  true,
 			},
 			UpdatedAt: time.Now(),
-			Name:      cmdArgs[1],
+			Name:      itemWithHash,
 		})
 		if err != nil {
 			sendMessage(s, e.ChannelID, "Failed to update description.", "Failed to send failed description update response:")
 			return
 		}
-		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's description to %s.", cmdArgs[1], cmdArgs[2]), "Failed to send description update response:")
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's description to %s.", cmdArgs[1], cmdArgs[3]), "Failed to send description update response:")
 		return
 	}
 
 	/*Syntax:
-	!updateItem category <item_name> <category>*/
+	!updateItem category <item_name> <game_name> <category>*/
 	if strings.ToLower(cmdArgs[0]) == "category" {
 		err = st.db.UpdateCat(context.Background(), database.UpdateCatParams{
 			Category: sql.NullString{
@@ -272,13 +287,13 @@ func (st *state) updateItem(s *discordgo.Session, e *discordgo.MessageCreate, cm
 				Valid:  true,
 			},
 			UpdatedAt: time.Now(),
-			Name:      cmdArgs[1],
+			Name:      itemWithHash,
 		})
 		if err != nil {
 			sendMessage(s, e.ChannelID, "Failed to update category.", "Failed to send failed category update response:")
 			return
 		}
-		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's category to %s.", cmdArgs[1], cmdArgs[2]), "Failed to send category update response:")
+		sendMessage(s, e.ChannelID, fmt.Sprintf("Updated %s's category to %s.", cmdArgs[1], cmdArgs[3]), "Failed to send category update response:")
 		return
 	}
 
@@ -287,8 +302,17 @@ func (st *state) updateItem(s *discordgo.Session, e *discordgo.MessageCreate, cm
 
 func (st *state) listItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
 	/*Syntax:
-	!listItem <item_name>*/
-	item, err := st.db.GetItem(context.Background(), cmdArgs[0])
+	!listItem <item_name> <game_name>*/
+	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
+		Name:     cmdArgs[2],
+		ServerID: e.GuildID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		sendMessage(s, e.ChannelID, "Specified game does not exist in this server.", "Failed to send invalid Game response:")
+		return
+	}
+	itemWithHash := fmt.Sprintf("%s[%s]", cmdArgs[0], game.ID.String())
+	item, err := st.db.GetItem(context.Background(), itemWithHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		sendMessage(s, e.ChannelID, "That item does not exist.", "Failed to send invalid item response:")
 		return
@@ -297,7 +321,8 @@ func (st *state) listItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 		sendMessage(s, e.ChannelID, "Something went wrong while fetching item.", "Failed to send failed item fetch response:")
 		return
 	}
-	msg := fmt.Sprintf("Name:\t\t\t%s\n", item.Name)
+	split := strings.Split(item.Name, "[")
+	msg := fmt.Sprintf("Name:\t\t\t%s\n", split[0])
 	if item.Description.Valid {
 		msg = fmt.Sprintf("%sDescription:\t%s\n", msg, item.Description.String)
 	} else {
@@ -313,7 +338,15 @@ func (st *state) listItem(s *discordgo.Session, e *discordgo.MessageCreate, cmdA
 
 func (st *state) listItems(s *discordgo.Session, e *discordgo.MessageCreate, cmdArgs []string) {
 	/*Syntax:
-	!listItems <category>*/
+	!listItems <category> <game_name>*/
+	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
+		Name:     cmdArgs[2],
+		ServerID: e.GuildID,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		sendMessage(s, e.ChannelID, "Specified game does not exist in this server.", "Failed to send invalid Game response:")
+		return
+	}
 	items, err := st.db.GetItemsByCategory(context.Background(), sql.NullString{
 		Valid:  true,
 		String: cmdArgs[0],
@@ -328,10 +361,13 @@ func (st *state) listItems(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 	}
 	msg := fmt.Sprintf("Items in %s category:\n", cmdArgs[0])
 	for _, item := range items {
-		if item.Description.Valid {
-			msg = fmt.Sprintf("%s- %s: %s\n", msg, item.Name, item.Description.String)
-		} else {
-			msg = fmt.Sprintf("%s- %s\n", msg, item.Name)
+		if strings.Contains(item.Name, game.ID.String()) {
+			split := strings.Split(item.Name, "[")
+			if item.Description.Valid {
+				msg = fmt.Sprintf("%s- %s: %s\n", msg, split[0], item.Description.String)
+			} else {
+				msg = fmt.Sprintf("%s- %s\n", msg, split[0])
+			}
 		}
 	}
 	sendMessage(s, e.ChannelID, msg, "Failed to send listItems response:")
@@ -368,10 +404,11 @@ func (st *state) listInventory(s *discordgo.Session, e *discordgo.MessageCreate,
 		sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory:", player.Name), "Failed:")
 		msg := ""
 		for _, item := range inventory {
+			split := strings.Split(item.Name, "[")
 			if item.Description.Valid {
-				msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+				msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, split[0], item.Description.String)
 			} else {
-				msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+				msg += fmt.Sprintf("%dx %s\n", item.Quantity, split[0])
 			}
 			if item.Category.Valid {
 				msg += fmt.Sprintf("Category: %s", item.Category.String)
@@ -400,10 +437,11 @@ func (st *state) listInventory(s *discordgo.Session, e *discordgo.MessageCreate,
 	sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory:", cmdArgs[0]), "Failed:")
 	msg := ""
 	for _, item := range inventory {
+		split := strings.Split(item.Name, "[")
 		if item.Description.Valid {
-			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, split[0], item.Description.String)
 		} else {
-			msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+			msg += fmt.Sprintf("%dx %s\n", item.Quantity, split[0])
 		}
 		if item.Category.Valid {
 			msg += fmt.Sprintf("Category: %s", item.Category.String)
@@ -455,10 +493,11 @@ func (st *state) listInventoryByCat(s *discordgo.Session, e *discordgo.MessageCr
 		sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory (Category: %s):", player.Name, cmdArgs[1]), "Failed:")
 		msg := ""
 		for _, item := range inventory {
+			split := strings.Split(item.Name, "[")
 			if item.Description.Valid {
-				msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+				msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, split[0], item.Description.String)
 			} else {
-				msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+				msg += fmt.Sprintf("%dx %s\n", item.Quantity, split[0])
 			}
 			sendMessage(s, e.ChannelID, msg, "Failed:")
 			msg = ""
@@ -488,10 +527,11 @@ func (st *state) listInventoryByCat(s *discordgo.Session, e *discordgo.MessageCr
 	sendMessage(s, e.ChannelID, fmt.Sprintf("%s's Inventory (Category: %s):", cmdArgs[0], cmdArgs[2]), "Failed:")
 	msg := ""
 	for _, item := range inventory {
+		split := strings.Split(item.Name, "[")
 		if item.Description.Valid {
-			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, item.Name, item.Description.String)
+			msg += fmt.Sprintf("%dx %s: %s\n", item.Quantity, split[0], item.Description.String)
 		} else {
-			msg += fmt.Sprintf("%dx %s\n", item.Quantity, item.Name)
+			msg += fmt.Sprintf("%dx %s\n", item.Quantity, split[0])
 		}
 		if item.Category.Valid {
 			msg += fmt.Sprintf("Category: %s", item.Category.String)
