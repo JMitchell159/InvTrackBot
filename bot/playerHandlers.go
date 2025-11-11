@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/JMitchell159/InvTrackBot/internal/database"
@@ -18,6 +19,10 @@ func (st *state) addPlayer(s *discordgo.Session, e *discordgo.MessageCreate, cmd
 	*/
 	if len(cmdArgs) < 2 {
 		sendMessage(s, e.ChannelID, "The add command takes 2 arguments in this order, player name & game name.", "Failed sending required add arguments response:")
+		return
+	}
+	if !regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(cmdArgs[1]) {
+		sendMessage(s, e.ChannelID, "Player name can only contain alphanumeric characters.", "Failed sending invalid name response:")
 		return
 	}
 	game, err := st.db.GetGameByName(context.Background(), database.GetGameByNameParams{
