@@ -60,16 +60,16 @@ List using player ID:
 ## Usage
 
 The following are the commands you are able to run outside of the ones outlined in the Quick Start section:
-- !register item 'item_name' 'game_name': registers an item to a game
-- !register itemDesc 'item_name' 'game_name' 'description': registers an item with a description to a game
-- !register itemCat 'item_name' 'game_name' 'category': registers an item with a category to a game
-- !register itemFull 'item_name' 'game_name' 'category' 'description': registers an item with both a category and description to a game
-- !updateItem description 'item_name' 'game_name' 'description': updates an existing item's description for a game
-- !updateItem category 'item_name' 'game_name' 'category': updates an existing item's category for a game
-- !listItem 'item_name' 'game_name': lists an item along with its description and category for a game
-- !listItems 'category' 'game_name': lists all items in a category with their descriptions for a game
-- !listInvByCat 'player_id' 'category': lists all items in a player's inventory with a certain category
-- !listInvByCat 'player_name' 'game_name' 'category': same as above, but using player_name and game_name instead of player ID
+- `!register item 'item_name' 'game_name'`: registers an item to a game
+- `!register itemDesc 'item_name' 'game_name' 'description'`: registers an item with a description to a game
+- `!register itemCat 'item_name' 'game_name' 'category'`: registers an item with a category to a game
+- `!register itemFull 'item_name' 'game_name' 'category' 'description'`: registers an item with both a category and description to a game
+- `!updateItem description 'item_name' 'game_name' 'description'`: updates an existing item's description for a game
+- `!updateItem category 'item_name' 'game_name' 'category'`: updates an existing item's category for a game
+- `!listItem 'item_name' 'game_name'`: lists an item along with its description and category for a game
+- `!listItems 'category' 'game_name'`: lists all items in a category with their descriptions for a game
+- `!listInvByCat 'player_id' 'category'`: lists all items in a player's inventory with a certain category
+- `!listInvByCat 'player_name' 'game_name' 'category'`: same as above, but using player_name and game_name instead of player ID
 
 ## Contributing
 
