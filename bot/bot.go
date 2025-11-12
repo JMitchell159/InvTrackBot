@@ -49,7 +49,7 @@ func Start() {
 		return
 	}
 
-	goBot.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
+	goBot.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent | discordgo.IntentsGuildMembers
 	goBot.StateEnabled = true
 
 	BotId = u.ID

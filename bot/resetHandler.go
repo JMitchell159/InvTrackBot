@@ -7,6 +7,10 @@ import (
 )
 
 func (st *state) reset(s *discordgo.Session, e *discordgo.MessageCreate) {
+	if e.Author.ID != st.cfg.BotOwnerID {
+		sendMessage(s, e.ChannelID, "You are not allowed to run this command.", "Failed to send unauthorized access response:")
+		return
+	}
 	err := st.db.ResetServers(context.Background())
 	if err != nil {
 		sendMessage(s, e.ChannelID, "Failed to reset servers.", "Failed to send failed servers reset response:")
